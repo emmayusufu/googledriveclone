@@ -34,7 +34,7 @@ const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children }) => {
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between mb-4">
-          <h3 id="modal-title" className="text-lg font-semibold text-gray-900">
+          <h3 id="modal-title" className="text-lg font-medium text-gray-900">
             {title}
           </h3>
           <button

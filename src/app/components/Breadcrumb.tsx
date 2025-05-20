@@ -1,12 +1,8 @@
 import React from "react";
-
-type Folder = {
-  id: string;
-  name: string;
-};
+import { FolderItem } from "../types";
 
 type BreadcrumbProps = {
-  path: Folder[];
+  path: FolderItem[];
   onNavigate: (folderId: string | null) => void;
 };
 
@@ -23,13 +19,13 @@ const Breadcrumb: React.FC<BreadcrumbProps> = ({ path, onNavigate }) => {
       {path.map((folder, index) => {
         const isLast = index === path.length - 1;
         return (
-          <div key={folder.id} className="flex items-center">
+          <div key={folder._id} className="flex items-center">
             <span className="mx-1 text-gray-400">/</span>
             {isLast ? (
               <span className="text-gray-900 font-medium">{folder.name}</span>
             ) : (
               <button
-                onClick={() => onNavigate(folder.id)}
+                onClick={() => onNavigate(folder._id)}
                 className="text-gray-600 hover:text-gray-900 cursor-pointer"
               >
                 {folder.name}

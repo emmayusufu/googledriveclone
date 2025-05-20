@@ -1,10 +1,25 @@
-import { FolderIcon, XMarkIcon } from "@heroicons/react/20/solid";
-import { ArrowUpTrayIcon } from "@heroicons/react/24/outline";
+"use client";
+import { useEffect, useState } from "react";
+import { FolderIcon } from "@heroicons/react/16/solid";
+import { XMarkIcon } from "@heroicons/react/20/solid";
+import { FolderItem } from "../types";
+import { apiService } from "@/lib/api";
+import FolderTree from "./FolderTree";
+
+type FolderTreeNode = FolderItem & { children: FolderTreeNode[] };
+
+function normalizeFolderTree(
+  folders: Array<FolderItem & { children?: FolderItem[] }>
+): FolderTreeNode[] {
+  return folders.map((folder) => ({
+    ...folder,
+    children: normalizeFolderTree(folder.children || []),
+  }));
+}
 
 interface SidebarProps {
   currentFolder: string | null;
   onNavigateToFolder: (folderId: string | null) => void;
-  onFileUpload: (e: React.ChangeEvent<HTMLInputElement>) => void;
   isMobileSidebarOpen?: boolean;
   onCloseMobileSidebar?: () => void;
 }
@@ -12,10 +27,63 @@ interface SidebarProps {
 export default function Sidebar({
   currentFolder,
   onNavigateToFolder,
-  onFileUpload,
   isMobileSidebarOpen = true,
   onCloseMobileSidebar,
 }: SidebarProps) {
+  const [folderTree, setFolderTree] = useState<
+    Array<FolderItem & { children?: FolderItem[] }>
+  >([]);
+  const [loading, setLoading] = useState(true);
+
+  // Function to fetch folder tree
+  const fetchFolderTree = async () => {
+    try {
+      setLoading(true);
+      const response = await apiService.getFolderTree();
+      if (response.success && response.data) {
+        setFolderTree(response.data.tree);
+      }
+    } catch (error) {
+      console.error("Failed to fetch folder tree:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Initial fetch
+  useEffect(() => {
+    fetchFolderTree();
+  }, []);
+
+  // Set up event listeners for folder structure changes
+  useEffect(() => {
+    // Custom event names for folder operations
+    const eventTypes = [
+      "folder-created",
+      "folder-deleted",
+      "folder-renamed",
+      "folder-moved",
+      "file-uploaded", // Files might be uploaded to folders
+    ];
+
+    // Event handler function
+    const handleFolderChange = () => {
+      fetchFolderTree();
+    };
+
+    // Add event listeners
+    eventTypes.forEach((eventType) => {
+      window.addEventListener(eventType, handleFolderChange);
+    });
+
+    // Clean up event listeners on component unmount
+    return () => {
+      eventTypes.forEach((eventType) => {
+        window.removeEventListener(eventType, handleFolderChange);
+      });
+    };
+  }, []);
+
   return (
     <aside
       className={`bg-white border-r border-gray-200 overflow-y-auto transition-all duration-300 ${
@@ -36,24 +104,6 @@ export default function Sidebar({
           )}
         </div>
 
-        <div className="mb-6">
-          <label htmlFor="fileUpload" className="w-full">
-            <div className="bg-white text-blue-600 border border-gray-300 rounded-sm px-4 py-2 text-center cursor-pointer hover:bg-gray-50 transition-colors">
-              <div className="flex items-center justify-center text-[13px]">
-                <ArrowUpTrayIcon className="w-5 h-5 mr-2" />
-                Upload files
-              </div>
-            </div>
-            <input
-              id="fileUpload"
-              type="file"
-              multiple
-              onChange={onFileUpload}
-              className="hidden"
-            />
-          </label>
-        </div>
-
         <ul className="space-y-2">
           <li>
             <button
@@ -69,6 +119,16 @@ export default function Sidebar({
             </button>
           </li>
         </ul>
+
+        {loading ? (
+          <div className="text-sm text-gray-500">Loading folders...</div>
+        ) : (
+          <FolderTree
+            folders={normalizeFolderTree(folderTree)}
+            currentFolder={currentFolder}
+            onNavigateToFolder={onNavigateToFolder}
+          />
+        )}
       </div>
     </aside>
   );

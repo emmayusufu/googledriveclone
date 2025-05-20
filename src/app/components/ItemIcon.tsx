@@ -24,7 +24,6 @@ const ItemIcon: React.FC<ItemIconProps> = ({
     return <FolderIcon className={`${iconSize} text-yellow-500`} />;
   }
 
-  // Image files
   if (fileType?.startsWith("image/")) {
     return (
       <div
@@ -35,7 +34,6 @@ const ItemIcon: React.FC<ItemIconProps> = ({
     );
   }
 
-  // Video files
   if (fileType?.startsWith("video/")) {
     return (
       <div
@@ -46,7 +44,6 @@ const ItemIcon: React.FC<ItemIconProps> = ({
     );
   }
 
-  // Audio files
   if (fileType?.startsWith("audio/")) {
     return (
       <div
@@ -57,7 +54,6 @@ const ItemIcon: React.FC<ItemIconProps> = ({
     );
   }
 
-  // PDF files
   if (fileType?.includes("pdf")) {
     return (
       <div
@@ -68,7 +64,6 @@ const ItemIcon: React.FC<ItemIconProps> = ({
     );
   }
 
-  // Document files
   if (
     fileType?.includes("document") ||
     fileType?.includes("sheet") ||
@@ -83,7 +78,6 @@ const ItemIcon: React.FC<ItemIconProps> = ({
     );
   }
 
-  // Default file icon
   return <DocumentIcon className={`${iconSize} text-blue-500`} />;
 };
 

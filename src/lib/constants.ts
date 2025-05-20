@@ -1,0 +1,4 @@
+export const MAX_UPLOAD_SIZE = 2.5 * 1024 * 1024;
+export const MAX_UPLOAD_SIZE_READABLE = "2.5MB";
+export const MAX_TOTAL_UPLOAD_SIZE = 12.5 * 1024 * 1024;
+export const MAX_TOTAL_UPLOAD_SIZE_READABLE = "12.5MB";

@@ -4,13 +4,15 @@
   "private": true,
   "scripts": {
     "dev": "next dev --turbopack",
-    "dev:docker": "docker compose --env-file .env.local up --build",
+    "up:docker": "docker compose --env-file .env.local up --build",
+    "down:docker": "docker compose down",
     "build": "next build",
     "start": "next start",
     "lint": "next lint"
   },
   "dependencies": {
     "@clerk/nextjs": "^6.19.4",
+    "@cyntler/react-doc-viewer": "^1.17.0",
     "@heroicons/react": "^2.2.0",
     "@next-auth/prisma-adapter": "^1.0.7",
     "cloudinary": "^2.6.1",

@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import {
   DocumentIcon,
   TrashIcon,
@@ -72,6 +72,8 @@ export default function DriveApp() {
   const [isRenaming, setIsRenaming] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
 
+  const [processingItemId, setProcessingItemId] = useState<string | null>(null);
+
   const [windowWidth, setWindowWidth] = useState(
     typeof window !== "undefined" ? window.innerWidth : 1024
   );
@@ -104,55 +106,7 @@ export default function DriveApp() {
     setIsMobileSidebarOpen(false);
   }, [currentFolder]);
 
-  useEffect(() => {
-    loadFolderContents();
-  }, [currentFolder]);
-
-  useEffect(() => {
-    if (!searchQuery.trim()) {
-      setSearchResults([]);
-      setIsSearching(false);
-      return;
-    }
-
-    const debounceTimer = setTimeout(async () => {
-      setIsSearching(true);
-      try {
-        const res = await apiService.searchFiles(searchQuery);
-
-        if (res.success) {
-          const results = res.data;
-
-          const formattedResults: DriveItem[] = [
-            ...(results.files || []).map((file: FileItem) => ({
-              ...file,
-              type: "file" as const,
-            })),
-            ...(results.folders || []).map((folder: FolderItem) => ({
-              ...folder,
-              type: "folder" as const,
-            })),
-          ];
-          setSearchResults(formattedResults);
-        } else {
-          setError(res.error);
-        }
-      } catch (err) {
-        console.error("Search failed:", err);
-        setError("Search failed");
-      } finally {
-        setIsSearching(false);
-      }
-    }, 300);
-
-    return () => clearTimeout(debounceTimer);
-  }, [searchQuery]);
-
-  useEffect(() => {
-    buildBreadcrumbPath();
-  }, [currentFolder, items]);
-
-  const loadFolderContents = async () => {
+  const loadFolderContents = useCallback(async () => {
     setLoading(true);
     setError(null);
 
@@ -182,29 +136,72 @@ export default function DriveApp() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [currentFolder]);
 
-  const buildBreadcrumbPath = async () => {
-    try {
-      if (!currentFolder) {
-        setBreadcrumbPath([]);
-        return;
-      }
+  useEffect(() => {
+    loadFolderContents();
+  }, [currentFolder, loadFolderContents]);
 
-      const response = await apiService.getFolderPath(currentFolder);
-
-      if (!response.success) {
-        setError(response.error);
-        return;
-      }
-      const path = response.data.path;
-
-      setBreadcrumbPath(path);
-    } catch (err) {
-      console.error("Failed to build breadcrumb path:", err);
-      setBreadcrumbPath([]);
+  useEffect(() => {
+    if (!searchQuery.trim()) {
+      setSearchResults([]);
+      setIsSearching(false);
+      return;
     }
-  };
+
+    const debounceTimer = setTimeout(async () => {
+      setIsSearching(true);
+      try {
+        const res = await apiService.searchFiles(searchQuery);
+
+        if (res.success) {
+          const results = res.data;
+
+          const formattedResults = [
+            ...(results.files || []).map((file) => ({
+              ...file,
+              type: "file" as const,
+            })),
+          ];
+          setSearchResults(formattedResults);
+        } else {
+          setError(res.error);
+        }
+      } catch (err) {
+        console.error("Search failed:", err);
+        setError("Search failed");
+      } finally {
+        setIsSearching(false);
+      }
+    }, 300);
+
+    return () => clearTimeout(debounceTimer);
+  }, [searchQuery]);
+
+  useEffect(() => {
+    const buildBreadcrumbPath = async () => {
+      try {
+        if (!currentFolder) {
+          setBreadcrumbPath([]);
+          return;
+        }
+
+        const response = await apiService.getFolderPath(currentFolder);
+
+        if (!response.success) {
+          setError(response.error);
+          return;
+        }
+        const path = response.data.path;
+
+        setBreadcrumbPath(path);
+      } catch (err) {
+        console.error("Failed to build breadcrumb path:", err);
+        setBreadcrumbPath([]);
+      }
+    };
+    buildBreadcrumbPath();
+  }, [currentFolder, items]);
 
   const displayItems = searchQuery.trim() ? searchResults : items;
 
@@ -345,6 +342,8 @@ export default function DriveApp() {
     if (!item) return;
 
     setIsRenaming(true);
+    setProcessingItemId(selectedItem);
+
     try {
       await apiService.renameItem(selectedItem, renameValue.trim(), item.type);
       await loadFolderContents();
@@ -358,6 +357,7 @@ export default function DriveApp() {
       setError("Failed to rename item");
     } finally {
       setIsRenaming(false);
+      setProcessingItemId(null);
     }
   };
 
@@ -371,6 +371,8 @@ export default function DriveApp() {
     if (!item) return;
 
     setIsDeleting(true);
+    setProcessingItemId(itemId);
+
     try {
       if (item.type === "folder") {
         await apiService.deleteFolder(itemId);
@@ -390,6 +392,7 @@ export default function DriveApp() {
       setError("Failed to delete item");
     } finally {
       setIsDeleting(false);
+      setProcessingItemId(null);
     }
   };
 
@@ -442,6 +445,119 @@ export default function DriveApp() {
       )}
     </div>
   );
+
+  const renderGridItem = (item: DriveItem) => {
+    const isProcessing = processingItemId === item._id;
+
+    return (
+      <div
+        key={item._id}
+        className={`group relative rounded-lg border hover:border-gray-300 hover:shadow-sm transition-all ${
+          isProcessing ? "cursor-wait opacity-70" : "cursor-pointer"
+        } overflow-hidden ${
+          selectedItem === item._id
+            ? "border-blue-500 ring-2 ring-blue-200"
+            : "border-gray-200"
+        }`}
+        onClick={() => !isProcessing && handleItemClick(item, "open")}
+        onContextMenu={(e) => !isProcessing && handleContextMenu(e, item)}
+      >
+        {isProcessing && (
+          <div className="absolute inset-0 flex items-center justify-center bg-white bg-opacity-60 z-10">
+            <div className="animate-spin h-8 w-8 border-4 border-blue-500 border-t-transparent rounded-full"></div>
+          </div>
+        )}
+
+        <div className="flex flex-col items-center p-3">
+          <ItemIcon
+            type={item.type}
+            fileType={item.type === "file" ? item.mimeType : undefined}
+          />
+          <p className="mt-2 text-sm text-gray-800 truncate w-full text-center">
+            {item.name}
+          </p>
+          {item.type === "file" && item.size && (
+            <p className="text-xs text-gray-500 mt-1">
+              {formatSize(item.size)}
+            </p>
+          )}
+        </div>
+
+        <button
+          className={`absolute top-1 right-1 p-1 rounded-full ${
+            isProcessing
+              ? "opacity-0"
+              : "group-hover:opacity-100 hover:bg-gray-200 cursor-pointer"
+          }`}
+          onClick={(e) => {
+            if (!isProcessing) {
+              e.stopPropagation();
+              handleContextMenu(e, item);
+            }
+          }}
+        >
+          <EllipsisVerticalIcon className="w-5 h-5 text-gray-600" />
+        </button>
+      </div>
+    );
+  };
+
+  const renderListItem = (item: DriveItem) => {
+    const isProcessing = processingItemId === item._id;
+
+    return (
+      <div
+        key={item._id}
+        className={`flex items-center px-3 py-2 rounded-md group hover:bg-gray-50 relative ${
+          isProcessing ? "cursor-wait opacity-70" : "cursor-pointer"
+        } ${selectedItem === item._id ? "bg-blue-50" : ""}`}
+        onClick={() => !isProcessing && handleItemClick(item)}
+        onContextMenu={(e) => !isProcessing && handleContextMenu(e, item)}
+      >
+        {isProcessing && (
+          <div className="absolute inset-0 flex items-center justify-center bg-white bg-opacity-60 z-10">
+            <div className="animate-spin h-6 w-6 border-3 border-blue-500 border-t-transparent rounded-full"></div>
+          </div>
+        )}
+
+        <div className="w-10 flex-shrink-0">
+          <ItemIcon
+            type={item.type}
+            fileType={item.type === "file" ? item.mimeType : undefined}
+          />
+        </div>
+        <div className="flex-1 min-w-0 ml-3">
+          <p className="text-sm font-medium text-gray-800 truncate">
+            {item.name}
+          </p>
+          <p className="text-xs text-gray-500">
+            Modified {getDateFromString(item.updatedAt).toLocaleDateString()}
+          </p>
+        </div>
+        {item.type === "file" && item.size && (
+          <div className="ml-4 flex-shrink-0 text-sm text-gray-500">
+            {formatSize(item.size)}
+          </div>
+        )}
+
+        <button
+          className={`ml-2 p-1 rounded-full ${
+            isProcessing
+              ? "opacity-0"
+              : "opacity-0 group-hover:opacity-100 hover:bg-gray-200"
+          }`}
+          onClick={(e) => {
+            if (!isProcessing) {
+              e.stopPropagation();
+              handleContextMenu(e, item);
+            }
+          }}
+        >
+          <EllipsisVerticalIcon className="w-5 h-5 text-gray-600" />
+        </button>
+      </div>
+    );
+  };
 
   return (
     <div className="flex flex-col h-screen bg-gray-50 overflow-hidden">
@@ -649,91 +765,9 @@ export default function DriveApp() {
                 </div>
               ) : (
                 displayItems.map((item) =>
-                  viewMode === "grid" ? (
-                    <div
-                      key={item._id}
-                      className={`group relative rounded-lg border hover:border-gray-300 hover:shadow-sm transition-all cursor-pointer overflow-hidden ${
-                        selectedItem === item._id
-                          ? "border-blue-500 ring-2 ring-blue-200"
-                          : "border-gray-200"
-                      }`}
-                      onClick={() => handleItemClick(item, "open")}
-                      onContextMenu={(e) => handleContextMenu(e, item)}
-                    >
-                      {/* create aloading cover */}
-
-                      <div className="flex flex-col items-center p-3">
-                        <ItemIcon
-                          type={item.type}
-                          fileType={
-                            item.type === "file" ? item.mimeType : undefined
-                          }
-                        />
-                        <p className="mt-2 text-sm text-gray-800 truncate w-full text-center">
-                          {item.name}
-                        </p>
-                        {item.type === "file" && item.size && (
-                          <p className="text-xs text-gray-500 mt-1">
-                            {formatSize(item.size)}
-                          </p>
-                        )}
-                      </div>
-
-                      <button
-                        className="absolute top-1 right-1 p-1 rounded-full cursor-pointer group-hover:opacity-100 hover:bg-gray-200"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleContextMenu(e, item);
-                        }}
-                      >
-                        <EllipsisVerticalIcon className="w-5 h-5 text-gray-600" />
-                      </button>
-                    </div>
-                  ) : (
-                    <div
-                      key={item._id}
-                      className={`flex items-center px-3 py-2 rounded-md cursor-pointer group hover:bg-gray-50 ${
-                        selectedItem === item._id ? "bg-blue-50" : ""
-                      }`}
-                      onClick={() => handleItemClick(item)}
-                      onContextMenu={(e) => handleContextMenu(e, item)}
-                    >
-                      <div className="w-10 flex-shrink-0">
-                        <ItemIcon
-                          type={item.type}
-                          fileType={
-                            item.type === "file" ? item.mimeType : undefined
-                          }
-                        />
-                      </div>
-                      <div className="flex-1 min-w-0 ml-3">
-                        <p className="text-sm font-medium text-gray-800 truncate">
-                          {item.name}
-                        </p>
-                        <p className="text-xs text-gray-500">
-                          Modified{" "}
-                          {getDateFromString(
-                            item.updatedAt
-                          ).toLocaleDateString()}
-                        </p>
-                      </div>
-                      {item.type === "file" && item.size && (
-                        <div className="ml-4 flex-shrink-0 text-sm text-gray-500">
-                          {formatSize(item.size)}
-                        </div>
-                      )}
-
-                      <button
-                        className="ml-2 p-1 rounded-full opacity-0 group-hover:opacity-100 hover:bg-gray-200"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleContextMenu(e, item);
-                        }}
-                      >
-                        <EllipsisVerticalIcon className="w-5 h-5 text-gray-600" />
-                      </button>
-                    </div>
-                  )
+                  viewMode === "grid"
+                    ? renderGridItem(item)
+                    : renderListItem(item)
                 )
               )}
             </div>

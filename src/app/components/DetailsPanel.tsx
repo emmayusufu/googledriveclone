@@ -12,7 +12,7 @@ interface DetailsPanelProps {
   onRename: (item: DriveItem) => void;
   onDelete: (itemId: string) => void;
   items: DriveItem[];
-  isLoading?: boolean; // New prop for overall panel loading
+  isLoading?: boolean;
 }
 
 export default function DetailsPanel({
@@ -21,9 +21,8 @@ export default function DetailsPanel({
   onRename,
   onDelete,
   items,
-  isLoading = false, // Default to not loading
+  isLoading = false,
 }: DetailsPanelProps) {
-  // Loading states for specific operations
   const [isRenaming, setIsRenaming] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
 

@@ -35,7 +35,6 @@ export default function Sidebar({
   >([]);
   const [loading, setLoading] = useState(true);
 
-  // Function to fetch folder tree
   const fetchFolderTree = async () => {
     try {
       setLoading(true);
@@ -50,33 +49,27 @@ export default function Sidebar({
     }
   };
 
-  // Initial fetch
   useEffect(() => {
     fetchFolderTree();
   }, []);
 
-  // Set up event listeners for folder structure changes
   useEffect(() => {
-    // Custom event names for folder operations
     const eventTypes = [
       "folder-created",
       "folder-deleted",
       "folder-renamed",
       "folder-moved",
-      "file-uploaded", // Files might be uploaded to folders
+      "file-uploaded",
     ];
 
-    // Event handler function
     const handleFolderChange = () => {
       fetchFolderTree();
     };
 
-    // Add event listeners
     eventTypes.forEach((eventType) => {
       window.addEventListener(eventType, handleFolderChange);
     });
 
-    // Clean up event listeners on component unmount
     return () => {
       eventTypes.forEach((eventType) => {
         window.removeEventListener(eventType, handleFolderChange);

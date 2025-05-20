@@ -179,7 +179,6 @@ export const apiService = {
     query: string
   ): Promise<
     ApiResponse<{
-      folders: FolderItem[];
       files: FileItem[];
     }>
   > => {

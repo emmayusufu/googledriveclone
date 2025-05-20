@@ -17,7 +17,7 @@ const uploadRateLimit = {
 type HandlerFunction = (params: {
   userId: string;
   request: Request;
-}) => Promise<unknown>;
+}) => Promise<Response>;
 
 export function createAuthHandler(
   handler: HandlerFunction,

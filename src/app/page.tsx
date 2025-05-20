@@ -461,7 +461,7 @@ export default function DriveApp() {
 
             <input
               type="text"
-              placeholder="Search in Drive"
+              placeholder="Search For Files in Your in Drive"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="pl-10 pr-10 py-2 border text-xs border-gray-300 rounded-sm hover:border-blue-400 focus:border-blue-500 focus:outline-[0.5px] w-full"
@@ -660,6 +660,8 @@ export default function DriveApp() {
                       onClick={() => handleItemClick(item, "open")}
                       onContextMenu={(e) => handleContextMenu(e, item)}
                     >
+                      {/* create aloading cover */}
+
                       <div className="flex flex-col items-center p-3">
                         <ItemIcon
                           type={item.type}

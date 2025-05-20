@@ -199,24 +199,4 @@ export const apiService = {
     if (!response.ok) throw new Error("Failed to rename item");
     return response.json();
   },
-
-  getStats: async (): Promise<
-    ApiResponse<{
-      stats: {
-        totalFiles: number;
-        totalStorageBytes: number;
-        totalStorageMB: number;
-        fileTypes: {
-          extension: string;
-          count: number;
-          size: number;
-          sizeMB: number;
-        }[];
-      };
-    }>
-  > => {
-    const response = await fetch("/api/stats");
-    if (!response.ok) throw new Error("Failed to get storage statistics");
-    return response.json();
-  },
 };
